@@ -1,0 +1,111 @@
+/* Task 3: Advanced CSS Styling */
+
+:root {
+  --primary: #0d6efd;
+  --transition: all 0.3s ease;
+}
+
+/* Task 3: CSS Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.8s ease forwards;
+}
+
+/* Hero Section */
+.hero-section {
+  background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  width: 300px; height: 300px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  top: -80px; right: -80px;
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  width: 200px; height: 200px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  bottom: -60px; left: -60px;
+}
+
+/* Feature Cards */
+.feature-card {
+  transition: var(--transition);
+}
+
+.feature-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12) !important;
+}
+
+.feature-icon {
+  width: 70px; height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Note Cards */
+.note-hover {
+  transition: var(--transition);
+}
+
+.note-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+}
+
+/* Navbar active link */
+.navbar-nav .nav-link {
+  transition: var(--transition);
+  border-radius: 6px;
+  padding: 6px 12px !important;
+}
+
+.navbar-nav .nav-link:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+/* Form focus transitions */
+.form-control:focus {
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+  border-color: var(--primary);
+  transition: var(--transition);
+}
+
+/* Strength bar transition */
+#strengthBar {
+  transition: width 0.4s ease, background-color 0.4s ease;
+}
+
+/* Responsive tweaks - Task 3 */
+@media (max-width: 576px) {
+  .hero-section { min-height: 240px; padding: 2rem 1rem; }
+  .display-4 { font-size: 2rem; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }

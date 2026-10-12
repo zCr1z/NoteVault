@@ -1,0 +1,79 @@
+<%- include('partials/header') %>
+
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <h2 class="fw-bold mb-4"><i class="fas fa-envelope me-2 text-primary"></i>Contact Us</h2>
+
+    <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+      <div class="alert alert-danger">
+        <% errors.forEach(e => { %><div><i class="fas fa-times me-1"></i><%= e %></div><% }) %>
+      </div>
+    <% } %>
+
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-body p-4">
+        <!-- Task 1: HTML form | Task 2: client + server validation -->
+        <form action="/contact" method="POST" id="contactForm" novalidate>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Your Name *</label>
+            <input type="text" name="name" class="form-control"
+              value="<%= typeof formData !== 'undefined' ? formData.name : '' %>"
+              placeholder="Full Name" id="cName" required oninput="validateField(this)">
+            <div class="invalid-feedback">Name must be at least 2 characters</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email Address *</label>
+            <input type="email" name="email" class="form-control"
+              value="<%= typeof formData !== 'undefined' ? formData.email : '' %>"
+              placeholder="you@example.com" id="cEmail" required oninput="validateField(this)">
+            <div class="invalid-feedback">Please enter a valid email</div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Message *</label>
+            <textarea name="message" class="form-control" rows="5"
+              placeholder="Write your message (min 10 characters)..."
+              id="cMessage" required oninput="validateField(this); countChars(this)"><%= typeof formData !== 'undefined' ? formData.message : '' %></textarea>
+            <div class="d-flex justify-content-between">
+              <div class="invalid-feedback">Message must be at least 10 characters</div>
+              <small id="charCount" class="text-muted ms-auto">0 / 500</small>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold" onclick="return validateForm()">
+            <i class="fas fa-paper-plane me-2"></i>Send Message
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Task 2: Inline JavaScript client-side validation -->
+<script>
+function validateField(input) {
+  const val = input.value.trim();
+  let valid = true;
+  if (input.id === 'cName') valid = val.length >= 2;
+  if (input.id === 'cEmail') valid = /^\S+@\S+\.\S+$/.test(val);
+  if (input.id === 'cMessage') valid = val.length >= 10;
+  input.classList.toggle('is-invalid', !valid);
+  input.classList.toggle('is-valid', valid);
+  return valid;
+}
+
+function countChars(textarea) {
+  const len = Math.min(textarea.value.length, 500);
+  textarea.value = textarea.value.substring(0, 500);
+  document.getElementById('charCount').textContent = `${len} / 500`;
+}
+
+function validateForm() {
+  const fields = ['cName', 'cEmail', 'cMessage'].map(id => document.getElementById(id));
+  const results = fields.map(f => validateField(f));
+  return results.every(Boolean);
+}
+</script>
+
+<%- include('partials/footer') %>

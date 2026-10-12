@@ -1,0 +1,296 @@
+<%- include('partials/header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold mb-0"><i class="fas fa-th-large me-2 text-primary"></i>My Notes</h2>
+  <button class="btn btn-primary" onclick="openNoteModal()">
+    <i class="fas fa-plus me-2"></i>New Note
+  </button>
+</div>
+
+<!-- Search + Filter - Task 4: Dynamic DOM -->
+<div class="row g-2 mb-4">
+  <div class="col-md-8">
+    <div class="input-group">
+      <span class="input-group-text"><i class="fas fa-search"></i></span>
+      <input type="text" id="searchInput" class="form-control" placeholder="Search notes..." oninput="filterNotes()">
+    </div>
+  </div>
+  <div class="col-md-4">
+    <select id="subjectFilter" class="form-select" onchange="filterNotes()">
+      <option value="">All Subjects</option>
+    </select>
+  </div>
+</div>
+
+<!-- Notes Grid - dynamically populated -->
+<div id="notesGrid" class="row g-3">
+  <div class="col-12 text-center py-5" id="loadingState">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="mt-2 text-muted">Loading your notes...</p>
+  </div>
+</div>
+
+<div id="emptyState" class="text-center py-5" style="display:none">
+  <i class="fas fa-sticky-note fa-3x text-muted mb-3"></i>
+  <h5 class="text-muted">No notes yet. Create your first one!</h5>
+</div>
+
+<!-- Note Modal - Task 4: DOM manipulation -->
+<div class="modal fade" id="noteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold" id="modalTitle">New Note</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="noteId">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Title *</label>
+          <input type="text" id="noteTitle" class="form-control" placeholder="Note title" maxlength="100">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Subject</label>
+          <input type="text" id="noteSubject" class="form-control" placeholder="e.g. Networks, OOAD, DBMS">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Content *</label>
+          <textarea id="noteContent" class="form-control" rows="5" placeholder="Write your note here..."></textarea>
+        </div>
+        <div id="modalError" class="alert alert-danger" style="display:none"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveNote()">
+          <i class="fas fa-save me-2"></i>Save Note
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Task 5: Fetch from REST API using JWT from session -->
+<script>
+const TOKEN = '<%= user ? (typeof token !== "undefined" ? token : "") : "" %>';
+let allNotes = [];
+let editingId = null;
+
+// Get JWT from server via dedicated endpoint
+async function getToken() {
+  const res = await fetch('/auth/token');
+  if (res.ok) {
+    const data = await res.json();
+    return data.token;
+  }
+  return null;
+}
+
+// Task 5: Fetch all notes from REST API
+
+async function loadNotes() {
+  try {
+    const token = await getToken();
+
+    if (!token) {
+      throw new Error('Authentication token unavailable. Please log in again.');
+    }
+
+    const res = await fetch('/api/notes', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Unable to fetch notes');
+    }
+
+    allNotes = data.notes || [];
+    renderNotes(allNotes);
+    populateSubjectFilter();
+  } catch (err) {
+    console.error('Failed to load notes:', err);
+
+    const grid = document.getElementById('notesGrid');
+    const empty = document.getElementById('emptyState');
+
+    if (grid) {
+      grid.innerHTML = `
+        <div class="col-12 text-center py-5">
+          <p class="text-danger">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            Failed to load notes. Please refresh and try again.
+          </p>
+        </div>`;
+    }
+
+    if (empty) empty.style.display = 'none';
+  }
+}
+
+
+
+function renderNotes(notes) {
+  const grid = document.getElementById('notesGrid');
+  const empty = document.getElementById('emptyState');
+
+  if (!grid || !empty) {
+    console.error('Notes grid or empty state element is missing.');
+    return;
+  }
+
+  const loading = document.getElementById('loadingState');
+  if (loading) loading.remove();
+
+  if (notes.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  const colors = [
+    'border-primary',
+    'border-success',
+    'border-warning',
+    'border-info',
+    'border-danger'
+  ];
+
+  grid.innerHTML = notes.map((note, i) => `
+    <div class="col-md-6 col-lg-4 note-card"
+         data-subject="${escapeHtml(note.subject || 'General')}"
+         data-title="${escapeHtml(note.title || '').toLowerCase()}">
+
+      <div class="card h-100 border-2 ${colors[i % colors.length]} shadow-sm rounded-3 note-hover">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h6 class="fw-bold mb-0">${escapeHtml(note.title || '')}</h6>
+            <span class="badge bg-secondary">${escapeHtml(note.subject || 'General')}</span>
+          </div>
+
+          <p class="text-muted small mb-3">${escapeHtml(note.content || '').substring(0, 120)}${(note.content || '').length > 120 ? '...' : ''}</p>
+
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary"
+                    onclick="editNote('${note._id || note.id}')">
+              <i class="fas fa-edit me-1"></i>Edit
+            </button>
+
+            <button class="btn btn-sm btn-outline-danger"
+                    onclick="deleteNote('${note._id || note.id}')">
+              <i class="fas fa-trash me-1"></i>Delete
+            </button>
+          </div>
+        </div>
+
+        <div class="card-footer bg-transparent border-0">
+          <small class="text-muted">
+            <i class="fas fa-clock me-1"></i>
+            ${note.createdAt ? new Date(note.createdAt).toLocaleDateString() : ''}
+          </small>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+
+// Task 4: Client-side DOM filtering
+function filterNotes() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const subject = document.getElementById('subjectFilter').value;
+  const filtered = allNotes.filter(n => {
+    const matchSearch = !search || n.title.toLowerCase().includes(search) || n.content.toLowerCase().includes(search);
+    const matchSubject = !subject || n.subject === subject;
+    return matchSearch && matchSubject;
+  });
+  renderNotes(filtered);
+}
+
+function populateSubjectFilter() {
+  const subjects = [...new Set(allNotes.map(n => n.subject || 'General'))];
+  const sel = document.getElementById('subjectFilter');
+  const existing = sel.innerHTML;
+  sel.innerHTML = '<option value="">All Subjects</option>' +
+    subjects.map(s => `<option>${s}</option>`).join('');
+}
+
+function openNoteModal(note = null) {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'New Note';
+  document.getElementById('noteId').value = '';
+  document.getElementById('noteTitle').value = '';
+  document.getElementById('noteSubject').value = '';
+  document.getElementById('noteContent').value = '';
+  document.getElementById('modalError').style.display = 'none';
+  new bootstrap.Modal(document.getElementById('noteModal')).show();
+}
+
+async function editNote(id) {
+  const note = allNotes.find(n => (n._id || n.id) == id);
+  if (!note) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Edit Note';
+  document.getElementById('noteTitle').value = note.title;
+  document.getElementById('noteSubject').value = note.subject || '';
+  document.getElementById('noteContent').value = note.content;
+  document.getElementById('modalError').style.display = 'none';
+  new bootstrap.Modal(document.getElementById('noteModal')).show();
+}
+
+// Task 5: Create/Update via REST API
+async function saveNote() {
+  const title = document.getElementById('noteTitle').value.trim();
+  const content = document.getElementById('noteContent').value.trim();
+  const subject = document.getElementById('noteSubject').value.trim() || 'General';
+  const errEl = document.getElementById('modalError');
+
+  if (!title || !content) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Title and content are required';
+    return;
+  }
+
+  try {
+    const token = await getToken();
+    const url = editingId ? `/api/notes/${editingId}` : '/api/notes';
+    const method = editingId ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ title, content, subject })
+    });
+
+    const data = await res.json();
+    if (!res.ok) { errEl.style.display = 'block'; errEl.textContent = data.error; return; }
+
+    bootstrap.Modal.getInstance(document.getElementById('noteModal')).hide();
+    loadNotes();
+  } catch (err) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Something went wrong. Try again.';
+  }
+}
+
+// Task 5: Delete via REST API
+async function deleteNote(id) {
+  if (!confirm('Delete this note?')) return;
+  const token = await getToken();
+  await fetch(`/api/notes/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  loadNotes();
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+loadNotes();
+</script>
+
+<%- include('partials/footer') %>
